@@ -1,0 +1,13 @@
+numpy==1.23.5
+pyodbc==4.0.39
+pandas==1.5.2
+multiprocessing
+json==2.0.9
+datetime
+sklearn==1.2.2
+pyarrow==14.0.1
+os
+scipy==1.10.0
+matplotlib==3.6.2
+random
+tensorflow==2.15.0

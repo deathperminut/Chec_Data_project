@@ -7,7 +7,7 @@
 import pandas as pd
 import numpy as np
 from scipy import stats
-
+import matplotlib.pyplot as plt
 ###############################
 ########DATABASE###############
 ###############################
@@ -29,7 +29,7 @@ from tensorflow.keras import backend as K
 from tensorflow.keras.layers.experimental.preprocessing import Resizing
 from tensorflow.keras.regularizers import l1_l2
 import tensorflow as tf
-
+from sklearn.metrics import mean_absolute_error
 
 ###############################
 ########CLASSES################
@@ -63,7 +63,21 @@ class VaeModel():
          
 
          self.generate_models()### generate all the models 10,2,3,GOOD MODELS
+         self.initialize_supervision()
          self.init_server() ### function for specify the credentials of the server.
+      
+      def initialize_supervision(self):
+          data = {
+                'modelo': ['modelo_10', 'modelo_2', 'modelo_3', 'modelo_good'],
+                'mse': ['Sin ejemplar', 'Sin ejemplar', 'Sin ejemplar', 'Sin ejemplar'],
+                # 'anomalos': ['Sin ejemplar', 'Sin ejemplar', 'Sin ejemplar', 'Sin ejemplar'],
+                # 'anomalos_modelo': ['Sin ejemplar', 'Sin ejemplar', 'Sin ejemplar', 'Sin ejemplar'],
+          }
+          self._10_ = 0
+          self._2_ = 0
+          self._3_ = 0
+          self._GOOD_ = 0
+          self.supervision = pd.DataFrame(data)
 
       def init_server(self):
           """
@@ -372,7 +386,6 @@ class VaeModel():
                 else:
                     ### si armamos un grupo de 672 directamente pasamos a preprocesamiento del dataset
                     grupo_imputado = self.processData(grupo)
-
                     ### insertamos en base de datos
                     self.insertDataBase(grupo_imputado)
 
@@ -408,8 +421,6 @@ class VaeModel():
             """
             function to insert the dataframe into the specific database
             ------------------------------------------------------------------------------------
-
-
             Parameters
             ----------
             df (pandas dataframe) :
@@ -420,8 +431,11 @@ class VaeModel():
             None
             """
             try:
+                 columnas_a_redondear=["IA","IB","IC","VA","VB","VC","P","Q","CONFIABILIDAD_IA","CONFIABILIDAD_IB","CONFIABILIDAD_IC",
+                                       "CONFIABILIDAD_VA","CONFIABILIDAD_VB","CONFIABILIDAD_VC","CONFIABILIDAD_P","CONFIABILIDAD_Q"]
+                 df[columnas_a_redondear] = df[columnas_a_redondear].round(4)
                  conexion = pyodbc.connect(self.conexion_str)
-
+                 
                  # Crear un DataFrame (simulando que tienes un DataFrame llamado DF_BARRAS_ABB)
 
                  # Crear un cursor para ejecutar consultas
@@ -443,6 +457,106 @@ class VaeModel():
             finally:
                  conexion.close()
 
+
+      def getMetricsModel(self,y_true,y_pred,model):
+          
+          if(model == '10' and self._10_ == 0):
+            self._10_ = 1
+            ### CALCULAMOS MAE POR MODELO 'modelo_10', 'modelo_2', 'modelo_3', 'modelo_good'
+            self.supervision.iloc[0,1] = mean_absolute_error(y_true, y_pred)
+            # self.supervision.iloc[0,2] = total_atipicos
+            # self.supervision.iloc[0,3] = atipicos_modelo
+            self.supervision.to_csv('supervisión_mae.csv', index=False)
+            ### guardamos grafica de residuales
+            # Calcular los residuos
+            residuos = y_true - y_pred
+            # Crear un gráfico de dispersión de los residuos
+            plt.scatter(range(len(residuos)), residuos, color='blue')
+            plt.axhline(y=0, color='red', linestyle='--', linewidth=2)  # Línea horizontal en y=0
+
+            # Etiquetas y título del gráfico
+            plt.xlabel('Índice')
+            plt.ylabel('Residuos_modelo_10')
+            plt.title('Gráfico de Residuos')
+            # Guardar el gráfico en un archivo de imagen (por ejemplo, PNG)
+            plt.savefig('grafico_residuos_modelo_10.png')
+
+          elif(model =='2' and self._2_ == 0):
+            self._2_ = 1
+            ### CALCULAMOS MAE POR MODELO 
+            self.supervision.iloc[1,1] = mean_absolute_error(y_true, y_pred)
+            # self.supervision.iloc[1,2] = total_atipicos
+            # self.supervision.iloc[1,3] = atipicos_modelo
+            self.supervision.to_csv('supervisión_mae.csv', index=False)
+            ### guardamos grafica de residuales
+            # Calcular los residuos
+            residuos = y_true - y_pred
+            # Crear un gráfico de dispersión de los residuos
+            plt.scatter(range(len(residuos)), residuos, color='blue')
+            plt.axhline(y=0, color='red', linestyle='--', linewidth=2)  # Línea horizontal en y=0
+
+            # Etiquetas y título del gráfico
+            plt.xlabel('Índice')
+            plt.ylabel('Residuos_modelo_2')
+            plt.title('Gráfico de Residuos')
+            # Guardar el gráfico en un archivo de imagen (por ejemplo, PNG)
+            plt.savefig('grafico_residuos_modelo_2.png')
+          elif(model =='3' and self._3_ == 0):
+            self._3_ = 1
+            ### CALCULAMOS MAE POR MODELO 
+            self.supervision.iloc[2,1] = mean_absolute_error(y_true, y_pred)
+            # self.supervision.iloc[2,2] = total_atipicos
+            # self.supervision.iloc[2,3] = atipicos_modelo
+            self.supervision.to_csv('supervisión_mae.csv', index=False)
+            ### guardamos grafica de residuales
+            # Calcular los residuos
+            residuos = y_true - y_pred
+            # Crear un gráfico de dispersión de los residuos
+            plt.scatter(range(len(residuos)), residuos, color='blue')
+            plt.axhline(y=0, color='red', linestyle='--', linewidth=2)  # Línea horizontal en y=0
+
+            # Etiquetas y título del gráfico
+            plt.xlabel('Índice')
+            plt.ylabel('Residuos_modelo_3')
+            plt.title('Gráfico de Residuos')
+            # Guardar el gráfico en un archivo de imagen (por ejemplo, PNG)
+            plt.savefig('grafico_residuos_modelo_3.png')
+          else:
+            if (self._GOOD_ == 0):
+                self._GOOD_ = 1
+                ### CALCULAMOS MAE POR MODELO 
+                self.supervision.iloc[3,1] = mean_absolute_error(y_true, y_pred)
+                # self.supervision.iloc[3,2] = total_atipicos
+                # self.supervision.iloc[3,3] = atipicos_modelo
+                self.supervision.to_csv('supervisión_mae.csv', index=False)
+                ### guardamos grafica de residuales
+                # Calcular los residuos
+                residuos = y_true - y_pred
+                # Crear un gráfico de dispersión de los residuos
+                plt.scatter(range(len(residuos)), residuos, color='blue')
+                plt.axhline(y=0, color='red', linestyle='--', linewidth=2)  # Línea horizontal en y=0
+                # Etiquetas y título del gráfico
+                plt.xlabel('Índice')
+                plt.ylabel('Residuos_modelo_good')
+                plt.title('Gráfico de Residuos')
+                # Guardar el gráfico en un archivo de imagen (por ejemplo, PNG)
+                plt.savefig('grafico_residuos_modelo_good.png')
+          pass
+      
+      def contar_elementos_comunes(self,lista1, lista2):
+            # Usamos un conjunto para hacer la comparación de manera eficiente
+            set_lista2 = set(lista2)
+            
+            # Contador para llevar la cuenta de los elementos comunes
+            contador = 0
+            
+            # Iteramos sobre la primera lista y verificamos si cada elemento está en la segunda lista
+            for elemento in lista1:
+                if elemento in set_lista2:
+                    contador += 1
+            
+            return contador
+      
 
       def processData(self,df):
                 """
@@ -539,9 +653,7 @@ class VaeModel():
                   # Iterar a través de cada serie de tiempo en el conjunto de datos
                   for j in range(Data.shape[1]):
                       # Obtener la serie de tiempo actual
-                      """
-                      MIRAR QUE LOS NULOS NO AFECTEN Y CONSEGUIR LOS INDICES DE LOS VALORES NULOS
-                      """
+
                       serie_tiempo = Data[i, j, :]
                       index_null = np.where(np.isnan(serie_tiempo))
                       Lista_nulos.append(index_null)### guardamos la lista de los indices de valores nulos por serie de tiempo
@@ -563,7 +675,8 @@ class VaeModel():
                       max_ = np.max(serie_tiempo)
                       if(min_ == max_):
                         Lista_limites[i, j, :]=np.array([min_,max_])
-                        serie_tiempo = serie_tiempo/min_
+                        if(min_!=0):
+                            serie_tiempo = serie_tiempo/min_
                         serie_tiempo[index_null] = min_ ### ubicamos los nulos como negativos
                         # Almacenar la serie de tiempo normalizada en la matriz de datos normalizados
 
@@ -588,8 +701,19 @@ class VaeModel():
                     if (Lista_limites[0,i,0] != Lista_limites[0,i,1]):
                         datos_normalizados[0,i,Lista_nulos[i]] = X_model[0,i,Lista_nulos[i]]
                         r2_serie.append(self.calc_r2(len(Lista_nulos[i]),model_name,i))
+                        #### CALCULAMOS METRICAS DEL MODELO#####
+                        # Detectar valores atípicos en la serie de tiempo usando el método Z-score
+                        #z_scores = np.abs(stats.zscore(datos_normalizados[0,i,:]))
+                        # Definir un umbral para considerar valores atípicos (por ejemplo, 2 desviaciones estándar)
+                        #umbral = 2.0
+                        #index_reemplazada = z_scores > umbral
+                        #index_reemplazada = np.where( index_reemplazada == True)[0]
+                        #cantidad_asociados_modelo = self.contar_elementos_comunes(Lista_nulos[i],index_reemplazada)
+                        self.getMetricsModel(datos_normalizados[0,i,:],X_model[0,i,:],model_name)
+                        ## calculamos las metricas de rendimiento
                     else:
                         r2_serie.append(1)
+                    
                 ### CALCULAMOS EL R2 DE LO OBTENIDO POR EL MODELO Y LA SERIE DE TIEMPO IMPUTADA CON LOS DATOS DEL MODELO
 
                 for i in range(0,len(Lista_nulos)):

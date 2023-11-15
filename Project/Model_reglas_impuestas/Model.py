@@ -5,6 +5,8 @@ import pandas as pd
 from multiprocessing.pool import ThreadPool as Pool
 import json
 import datetime
+#from Model_vae import model_vae
+#import Model_vae.model_vae as vae
 from Model_vae.model_vae import VaeModel
 
 ###FUNCTIONS:
@@ -98,7 +100,6 @@ def initialCounts(ListBarras):
     None
     
     """
-    global reporte;
     global barra;
     global variable;
     global porcent_error;
@@ -117,7 +118,6 @@ def initialCounts(ListBarras):
         "IA_IMPUTADO_POR_ANALISIS_NODAL","IB_IMPUTADO_POR_ANALISIS_NODAL","IC_IMPUTADO_POR_ANALISIS_NODAL","CABEZERAS_CON_CIRCUITO_SIN_REGISTRO_O_SIGNOS_DE_POTENCIAS_INCORRECTOS","NO_ES_POSIBLE_IDENTIFICAR_FLUJO_POR_POTENCIAS","V_CAMBIADO_CERO_POR_POTENCIAS_CERO","I_CAMBIADO_CERO_POR_POTENCIAS_CERO"]
     # Crear el DataFrame con valores iniciales en cero
     data = [[0 for _ in columnas] for _ in ListBarras]
-    reporte = pd.DataFrame(data, columns=columnas, index=ListBarras)
     umbral = [None]
     variable=[None]
     barra=[None]
@@ -170,18 +170,6 @@ def convertir_positivo(valor):
     if valor is None:
         return valor
     elif valor < 0:
-        if variable[0] == 'IA':   
-           reporte['IA_NEGATIVO_CORREGIDO'].loc[barra[0]] = reporte['IA_NEGATIVO_CORREGIDO'].loc[barra[0]] + 1
-        elif variable[0] == 'IB':
-           reporte['IB_NEGATIVO_CORREGIDO'].loc[barra[0]] = reporte['IB_NEGATIVO_CORREGIDO'].loc[barra[0]] + 1
-        elif variable[0] == 'IC':
-           reporte['IC_NEGATIVO_CORREGIDO'].loc[barra[0]] = reporte['IC_NEGATIVO_CORREGIDO'].loc[barra[0]] + 1
-        elif variable[0] == 'VA':
-           reporte['VA_NEGATIVO_CORREGIDO'].loc[barra[0]] = reporte['VA_NEGATIVO_CORREGIDO'].loc[barra[0]] + 1
-        elif variable[0] == 'VB':
-           reporte['VB_NEGATIVO_CORREGIDO'].loc[barra[0]] = reporte['VB_NEGATIVO_CORREGIDO'].loc[barra[0]] + 1
-        elif variable[0] == 'VC':
-           reporte['VC_NEGATIVO_CORREGIDO'].loc[barra[0]] = reporte['VC_NEGATIVO_CORREGIDO'].loc[barra[0]] + 1
         return abs(valor)
     else:
         return valor
@@ -201,65 +189,26 @@ def convertir_escala(valor):
     if valor is None:
         return valor
     elif variable[0] == 'VA' and valor > 1000:
-        reporte['CORRECCION_ESCALA_VA'].loc[barra[0]] = reporte['CORRECCION_ESCALA_VA'].loc[barra[0]] + 1
         return valor / 1000
 
     elif variable[0] == 'VB' and valor > 1000:
-        reporte['CORRECCION_ESCALA_VB'].loc[barra[0]] = reporte['CORRECCION_ESCALA_VB'].loc[barra[0]] + 1
         return valor / 1000
 
     elif variable[0] == 'VC' and valor > 1000:
-        reporte['CORRECCION_ESCALA_VC'].loc[barra[0]] = reporte['CORRECCION_ESCALA_VC'].loc[barra[0]] + 1
         return valor / 1000
 
     elif variable[0] == 'P' and valor > 100:
-        reporte['CORRECCION_ESCALA_P'].loc[barra[0]] = reporte['CORRECCION_ESCALA_P'].loc[barra[0]] + 1
         return valor / 1000
 
     elif variable[0] == 'Q' and valor > 100:
-        reporte['CORRECCION_ESCALA_Q'].loc[barra[0]] = reporte['CORRECCION_ESCALA_Q'].loc[barra[0]] + 1
         return valor / 1000
         
     else:
         return valor
 
 
-def count_NULL(time,dataframe):
-    """ 
-    DESCRIPTION: Function to report.
-    --------------------------------------------------
-    --------------------------------------------------
-    PARAMETERS:
-    - time
-    - dataframe (pd.DataFrame): DataFrame with the interest variables.
-    --------------------------------------------------
-    --------------------------------------------------
-    RETURN:
-    None
-    
-    """
-    reporte["VA_NULOS_"+time].loc[barra[0]]=dataframe["VA"].isnull().sum()
-    reporte["VB_NULOS_"+time].loc[barra[0]]=dataframe["VB"].isnull().sum()
-    reporte["VC_NULOS_"+time].loc[barra[0]]=dataframe["VC"].isnull().sum()
-    reporte["IA_NULOS_"+time].loc[barra[0]]=dataframe["IA"].isnull().sum()
-    reporte["IB_NULOS_"+time].loc[barra[0]]=dataframe["IB"].isnull().sum()
-    reporte["IC_NULOS_"+time].loc[barra[0]]=dataframe["IC"].isnull().sum()
-    reporte["P_NULOS_"+time].loc[barra[0]]=dataframe["P"].isnull().sum()
-    reporte["Q_NULOS_"+time].loc[barra[0]]=dataframe["Q"].isnull().sum()
 
-def printGlobal():
-    """ 
-    DESCRIPTION: Function to print the report of the nodal analysis.
-    ----------------------------------------------------------------
-    ----------------------------------------------------------------
-    PARAMETERS:
-    None
-    ----------------------------------------------------------------
-    ----------------------------------------------------------------
-    RETURN:
-    None
-    """
-    print(reporte)
+
 
 def Absolute(Datafilter):
     """ 
@@ -396,9 +345,6 @@ def CurrentVoltageCero(Datafilter):
                 ((Datafilter['VA'] == 0) & (Datafilter['VB'] == 0) & (Datafilter['VC'] == 0))].index)
     Datafilter['P'].loc[indices_cero] = 0 ## Replace the powers by zero
     Datafilter['Q'].loc[indices_cero] = 0 ## Replace the powers by zero
-    ## Count in the report
-    reporte["P_CAMBIADO_CERO"].loc[barra[0]]=reporte["P_CAMBIADO_CERO"].loc[barra[0]]+len(indices_cero)
-    reporte["Q_CAMBIADO_CERO"].loc[barra[0]]=reporte["Q_CAMBIADO_CERO"].loc[barra[0]]+len(indices_cero)
     return Datafilter
 
 def getSign(Number):
@@ -440,7 +386,6 @@ def findLastRegister(df):
             lista.append({'CIRCUITO':CIRCUITO,'P':getSign(registros_ordenados.iloc[0].loc['P']),'Q':getSign(registros_ordenados.iloc[0].loc['Q'])})
         else:
             lista.append({'CIRCUITO':CIRCUITO,'P':0,'Q':0}) 
-            reporte["NO_ES_POSIBLE_IDENTIFICAR_FLUJO_POR_POTENCIAS"].loc[barra[0]]=reporte["NO_ES_POSIBLE_IDENTIFICAR_FLUJO_POR_POTENCIAS"].loc[barra[0]]+1
 
     Dataframe_Signos[0] = pd.DataFrame(lista)
 
@@ -526,21 +471,7 @@ def getTargetRow(Datafilter,columnas):
     idx_mayores = df[columnas].idxmax()
     return idx_mayores[columnas[0]]
 
-def reportarInformeNodal(Columnas_Para_imputar):
-    """ 
-    DESCRIPTION: Function to report the imputed variables.
-    --------------------------------------------------------
-    --------------------------------------------------------
-    PARAMETERS:
-    - Columnas_Para_imputar (List): List with the columns imputed.
-    --------------------------------------------------------
-    --------------------------------------------------------
-    RETURN:
-    None
-    
-    """
-    for Col in Columnas_Para_imputar:
-        reporte[Col+'_IMPUTADO_POR_ANALISIS_NODAL'].loc[barra[0]]=reporte[Col+'_IMPUTADO_POR_ANALISIS_NODAL'].loc[barra[0]]+1
+
 
 def analizar_fases_completas(Datafilter):
     """ 
@@ -675,7 +606,6 @@ def replaceCurrentsCase2(Datafilter):
     for etiqueta in etiquetas:
         mediana=Datafilter[etiqueta].median()
         if Datafilter[etiqueta].isnull().sum() == 1:
-            reporte[etiqueta+"_IMPUTADO_POR_ANALISIS_NODAL"].loc[barra[0]]=reporte[etiqueta+"_IMPUTADO_POR_ANALISIS_NODAL"].loc[barra[0]]+1
             Datafilter[etiqueta].fillna(mediana,inplace=True) 
     return Datafilter
 
@@ -730,8 +660,6 @@ def CheckPower(Datafilter):
             Q=( Datafilter['VA'].loc[index] * Datafilter['IA'].loc[index] * 0.435 + Datafilter['VB'].loc[index] * Datafilter['IB'].loc[index] * 0.435 + Datafilter['VC'].loc[index] * Datafilter['IC'].loc[index] * 0.435 ) /1000
             if hay_valor_nulo == True:
                 ##Replace if there is some Null value
-                reporte["P_CAMBIADO_POR_CALCULADO"].loc[barra[0]]=reporte["P_CAMBIADO_POR_CALCULADO"].loc[barra[0]]+1
-                reporte["Q_CAMBIADO_POR_CALCULADO"].loc[barra[0]]=reporte["Q_CAMBIADO_POR_CALCULADO"].loc[barra[0]]+1
                 Datafilter['P'].loc[index]=P
                 Datafilter['Q'].loc[index]=Q
             else:
@@ -741,8 +669,6 @@ def CheckPower(Datafilter):
                 Porcentaje_error= abs(Potencia_Aparente_calculada - Potencia_Aparente_Registrada) / Potencia_Aparente_Registrada
                 if (np.isnan(Porcentaje_error) == False and umbral[0] != None ):
                     if (Porcentaje_error > umbral[0]):
-                        reporte["P_CAMBIADO_POR_CALCULADO"].loc[barra[0]]=reporte["P_CAMBIADO_POR_CALCULADO"].loc[barra[0]]+1
-                        reporte["Q_CAMBIADO_POR_CALCULADO"].loc[barra[0]]=reporte["Q_CAMBIADO_POR_CALCULADO"].loc[barra[0]]+1
                         Datafilter['P'].loc[index]=P
                         Datafilter['Q'].loc[index]=Q
     
@@ -843,7 +769,7 @@ def NodalAnalysisWithoutFullPhases(Datafilter,FasesImputar):
     valores_filtrados_entrada = filtered_df_signos.loc[condicion_entrada, 'CIRCUITO'].tolist()
     valores_filtrados_salida = filtered_df_signos.loc[condicion_salida, 'CIRCUITO'].tolist()
     if (len(valores_filtrados_entrada) == 0 or len(valores_filtrados_salida) == 0 ):
-        reporte["CABEZERAS_CON_CIRCUITO_SIN_REGISTRO_O_SIGNOS_DE_POTENCIAS_INCORRECTOS"].loc[barra[0]]=reporte["CABEZERAS_CON_CIRCUITO_SIN_REGISTRO_O_SIGNOS_DE_POTENCIAS_INCORRECTOS"].loc[barra[0]]+1
+        
         return Datafilter
     else:
         Dataframe_filtrados_entrada = Datafilter[Datafilter['CIRCUITO'].isin(valores_filtrados_entrada)]
@@ -943,14 +869,14 @@ def nodalCurrents(Datafilter,group_1,group_2,fases_restantes):
                 indice=list(Dataframe_Signos[0][Dataframe_Signos[0]['CIRCUITO'] == Datafilter['CIRCUITO'].loc[missing_indice]].index)[0]
                 Dataframe_Signos[0]['P'].loc[indice] = -1
                 Dataframe_Signos[0]['Q'].loc[indice] = -1
-                reporte["NO_ES_POSIBLE_IDENTIFICAR_FLUJO_POR_POTENCIAS"].loc[barra[0]]=reporte["NO_ES_POSIBLE_IDENTIFICAR_FLUJO_POR_POTENCIAS"].loc[barra[0]]-1
+                
 
             elif (df_group_1_sum < df_group_2_sum):
                 Datafilter.at[missing_indice,fase] = abs(df_group_1_sum - df_group_2_sum)
                 indice=list(Dataframe_Signos[0][Dataframe_Signos[0]['CIRCUITO'] == Datafilter['CIRCUITO'].loc[missing_indice]].index)[0]
                 Dataframe_Signos[0]['P'].loc[indice] = 1
                 Dataframe_Signos[0]['Q'].loc[indice] = 1
-                reporte["NO_ES_POSIBLE_IDENTIFICAR_FLUJO_POR_POTENCIAS"].loc[barra[0]]=reporte["NO_ES_POSIBLE_IDENTIFICAR_FLUJO_POR_POTENCIAS"].loc[barra[0]]-1
+                
         
     return Datafilter
 
@@ -1050,13 +976,11 @@ def PowerZero(Datafilter):
             Datafilter['IA'].loc[index] = 0
             Datafilter['IB'].loc[index] = 0
             Datafilter['IC'].loc[index] = 0
-            reporte["I_CAMBIADO_CERO_POR_POTENCIAS_CERO"].loc[barra[0]]=reporte["I_CAMBIADO_CERO_POR_POTENCIAS_CERO"].loc[barra[0]]+3
     if(len(Indices_interes_caso_2) != 0):
         for index in Indices_interes_caso_1:
             Datafilter['VA'].loc[index] = 0
             Datafilter['VB'].loc[index] = 0
             Datafilter['VC'].loc[index] = 0
-            reporte["V_CAMBIADO_CERO_POR_POTENCIAS_CERO"].loc[barra[0]]=reporte["V_CAMBIADO_CERO_POR_POTENCIAS_CERO"].loc[barra[0]]+3
     return Datafilter
 
 
@@ -1152,8 +1076,6 @@ def Case_1_circuit(Datafilter):
             Porcentaje_error= float((Potencia_Aparente_calculada - Potencia_Aparente_Registrada).abs() / Potencia_Aparente_Registrada)
             if (umbral[0] != None and np.isnan(Porcentaje_error) != True):
                 if (Porcentaje_error > umbral[0]):
-                    reporte["P_CAMBIADO_POR_CALCULADO"].loc[barra[0]]=reporte["P_CAMBIADO_POR_CALCULADO"].loc[barra[0]]+1
-                    reporte["Q_CAMBIADO_POR_CALCULADO"].loc[barra[0]]=reporte["Q_CAMBIADO_POR_CALCULADO"].loc[barra[0]]+1
                     Datafilter['P']=P 
                     Datafilter['Q']=Q 
                     Datafilter=correctSigno(Datafilter); ## Only change de sign
@@ -1162,8 +1084,6 @@ def Case_1_circuit(Datafilter):
             else:
                 Datafilter=correctSigno(Datafilter); ## Correct the sign according to the last register
         else:
-            reporte["P_CAMBIADO_POR_CALCULADO"].loc[barra[0]]=reporte["P_CAMBIADO_POR_CALCULADO"].loc[barra[0]]+1
-            reporte["Q_CAMBIADO_POR_CALCULADO"].loc[barra[0]]=reporte["Q_CAMBIADO_POR_CALCULADO"].loc[barra[0]]+1
             Datafilter['P']=P
             Datafilter['Q']=Q
             Datafilter=correctSigno(Datafilter)
@@ -1217,23 +1137,21 @@ def Case_2_circuit(Datafilter):
             flag = calculate_error(Datafilter,fases_completas)
             if flag:
                 ##Generate the report
-                reporte["CABEZERAS_CON_CIRCUITO_SIN_REGISTRO"].loc[barra[0]]=reporte["CABEZERAS_CON_CIRCUITO_SIN_REGISTRO"].loc[barra[0]]+1
+                pass
             else:
                 ##Case in the which can impute Null Values; One input and one output
                 Datafilter = replaceCurrentsCase2(Datafilter);
         elif len(fases_completas) == 2:
             flag = calculate_error(Datafilter,fases_completas)
             if flag:
-                ##Generate the report
-                reporte["CABEZERAS_CON_CIRCUITO_SIN_REGISTRO"].loc[barra[0]]=reporte["CABEZERAS_CON_CIRCUITO_SIN_REGISTRO"].loc[barra[0]]+1
+                pass
             else:
                 ##Case in the which can impute Null Values; One input and one output
                 Datafilter = replaceCurrentsCase2(Datafilter);
         elif len(fases_completas) == 3:
             flag = calculate_error(Datafilter,fases_completas)
             if flag:
-                ##Generate the report.
-                reporte["CABEZERAS_CON_CIRCUITO_SIN_REGISTRO"].loc[barra[0]]=reporte["CABEZERAS_CON_CIRCUITO_SIN_REGISTRO"].loc[barra[0]]+1
+                pass
         
         Datafilter = CheckPower(Datafilter) ## Check if is possible impute powers by historic calcules.
         return Datafilter
@@ -1292,8 +1210,7 @@ def Case_3_circuit(Datafilter):
             ##Calculate the error percnet of the currents of the same phase and the case in the which there is some with the full phase.
             flag = calcular_error_general(Datafilter,fases_completas)
             if flag:
-                ##Generate the report
-                reporte["CABEZERAS_CON_CIRCUITO_SIN_REGISTRO"].loc[barra[0]]=reporte["CABEZERAS_CON_CIRCUITO_SIN_REGISTRO"].loc[barra[0]]+1
+                pass
             else:
                 ## Get the columns that can be imputed;
                 Columnas_Nulos = columnas_con_nulos(fases_completas)
@@ -1305,14 +1222,13 @@ def Case_3_circuit(Datafilter):
                     ## Impute because only has one lost data.
                     Datafilter = replaceCurrentsGeneral(Datafilter,Columnas_Para_imputar,target_row)
                     ## Calculated the replaced data by nodal analysis.
-                    reportarInformeNodal(Columnas_Para_imputar)
+                    
 
         elif len(fases_completas) == 2 :
             ##Calculate the percent error between the currents of the same phase and in case there is some full phase.
             flag = calcular_error_general(Datafilter,fases_completas)
             if flag:
-                ##Generate the report.
-                reporte["CABEZERAS_CON_CIRCUITO_SIN_REGISTRO"].loc[barra[0]]=reporte["CABEZERAS_CON_CIRCUITO_SIN_REGISTRO"].loc[barra[0]]+1
+                pass
             else:
                 ## Get the columns that can be imputed.
                 Columnas_Nulos = columnas_con_nulos(fases_completas)
@@ -1324,14 +1240,12 @@ def Case_3_circuit(Datafilter):
                     ## Impute, because only has one lost data
                     Datafilter = replaceCurrentsGeneral(Datafilter,Columnas_Para_imputar,target_row)
                     ## Dtermine the data replaced by nodal analysis
-                    reportarInformeNodal(Columnas_Para_imputar)
 
         elif len(fases_completas) == 3 :
             ##Calculate the error percent between the currents of the same phase and in case there is some full phase.
             flag = calcular_error_general(Datafilter,fases_completas)
             if flag:
-                ##Generate the report
-                reporte["CABEZERAS_CON_CIRCUITO_SIN_REGISTRO"].loc[barra[0]]=reporte["CABEZERAS_CON_CIRCUITO_SIN_REGISTRO"].loc[barra[0]]+1
+                pass
         Datafilter = CheckPower(Datafilter) ## Chech if is possible to impute powers by historic calculates.
         return Datafilter
 
@@ -1370,7 +1284,7 @@ def Case_n_circuit(Datafilter):
         ##Check if is possible to do nodal analysis, having the flow of the currents according to the sign of the last full register of the powers
         [Datafilter,flag,group_1,group_2] = checkNodalAnalysis(Datafilter,fases_completas)
         if (flag):
-            reporte["CABEZERAS_CON_CIRCUITO_SIN_REGISTRO_O_SIGNOS_DE_POTENCIAS_INCORRECTOS"].loc[barra[0]]=reporte["CABEZERAS_CON_CIRCUITO_SIN_REGISTRO_O_SIGNOS_DE_POTENCIAS_INCORRECTOS"].loc[barra[0]]+1
+            pass
         else:
             ##Get the columns didn´t included in the imputation
             fases_restantes = columnas_con_nulos(fases_completas)
@@ -1379,8 +1293,6 @@ def Case_n_circuit(Datafilter):
             if(Columnas_Para_imputar != 0):
                 ##Nodal Analysis
                 Datafilter = nodalCurrents(Datafilter,group_1,group_2,Columnas_Para_imputar)# Sent the dataframe, the groups and the phases
-                ##Report the imputed data by nodal analysis
-                reportarInformeNodal(Columnas_Para_imputar)
     Datafilter = CheckPower(Datafilter) ## Check if is possible to impute powers by historic analysis.
     return Datafilter
 
@@ -1401,7 +1313,6 @@ def iterateByUniqueDate(dataframe,arrayUniqueDate):
     - dataframe_post_algoritmo (pd.DataFrame): Dataframe gotten with the nodal analysis.
     """
 
-    count_NULL("INICIALES",dataframe)
     # Create a empty dataframe with the specified columns.
     columns = ['CIRCUITO','TIEMPO_AJUSTADO','IA', 'IB', 'IC', 'VA', 'VB', 'VC', 'P', 'Q']
     dataframe_post_algoritmo = pd.DataFrame(columns=columns)
@@ -1412,159 +1323,159 @@ def iterateByUniqueDate(dataframe,arrayUniqueDate):
         variables_correct=["IA","IB","IC","VA","VB","VC","P","Q"]
         for i in variables_correct:
             dataframe_post_algoritmo[i]=dataframe_post_algoritmo[i].astype(float)
-        #table_dataframe = pa.Table.from_pandas(dataframe_post_algoritmo)
-        #pq.write_table(table_dataframe,barra[0]+'_Post_AnalisisNodal.parquet')
     except Exception as e:
         pass
-        #dataframe_post_algoritmo.to_csv(barra[0]+'_Post_AnalisisNodal.csv',index=False,sep=";")
     
-    ### Test again the lost data and update the report
-    count_NULL("FINALES",dataframe_post_algoritmo) 
     return dataframe_post_algoritmo
 
 
 def InitProgram():
-        #### CARGAMOS LOS MODELOS VAE QUE PODEMOS USAR
-        VAE_MODELS  = VaeModel() 
-        #Read the json file with the credentials:
-        with open("Project/Model_reglas_impuestas/Archivo_de_Credenciales.json", 'r') as archivo:
-            diccionario_cargado = json.load(archivo)
+    #### CARGAMOS LOS MODELOS VAE QUE PODEMOS USAR
+    VAE_MODELS  = VaeModel() 
+    
+    #Read the json file with the credentials:
+    with open("Project/Model_reglas_impuestas/Archivo_de_Credenciales.json", 'r') as archivo:
+        diccionario_cargado = json.load(archivo)
 
-        # Credentials:
-        server = "10.46.6.13\CHECSQL"
-        username = diccionario_cargado["username"]
-        password = diccionario_cargado["password"]
-        driver = "{ODBC Driver 17 for SQL Server}"
-        conexion_str = f"DRIVER={driver};SERVER={server};UID={username};PWD={password}"
+    # Credentials:
+    server = diccionario_cargado["server"]
+    username = diccionario_cargado["username"]
+    password = diccionario_cargado["password"]
+    driver = diccionario_cargado["driver"]
+    conexion_str = f"DRIVER={driver};SERVER={server};UID={username};PWD={password}"
 
-        #Current day:
-        fecha_actual = datetime.datetime.now()
-        fecha_una_semana_atras = fecha_actual - datetime.timedelta(days=7) #A week back
-        # Dates with the format of the database
-        fecha_actual_str = fecha_actual.strftime('%Y-%m-%d %H:%M:%S')
-        fecha_una_semana_atras_str = fecha_una_semana_atras.strftime('%Y-%m-%d %H:%M:%S')
+    #Current day:
+    fecha_actual = datetime.datetime.now()
+    fecha_una_semana_atras = fecha_actual - datetime.timedelta(days=7) #A week back
+    # Dates with the format of the database
+    fecha_actual_str = fecha_actual.strftime('%Y-%m-%d %H:%M:%S')
+    fecha_una_semana_atras_str = fecha_una_semana_atras.strftime('%Y-%m-%d %H:%M:%S')
 
-        names_sistemas=["MEDIDAS_ANALOGAS_HORIZONTALES","MEDIDAS_ANALOGAS_SURVALENT_H"]
-
-        for sistema in names_sistemas:
+    names_sistemas=["MEDIDAS_ANALOGAS_HORIZONTALES","MEDIDAS_ANALOGAS_SURVALENT_H"]
+    counter=0
+    for sistema in names_sistemas:
+        
+        #Indicator_system:
+        if sistema=="MEDIDAS_ANALOGAS_HORIZONTALES":
+            indicator_sistema="ABB"
+        else:
+            indicator_sistema="SURVALENT"
+        
+        # All the circuits that there is in database (Cabecera y Red):
+        try:
+            #Connection:
+            conexion = pyodbc.connect(conexion_str)
+        
+            # Create cursor to execute queries:
+            cursor = conexion.cursor()
+            consulta_sql = f"""
+            SELECT DISTINCT LEFT(CIRCUITO, 5) AS primeros_cinco_caracteres
+            FROM DM_OPERACION.dbo.{sistema}
+            WHERE TIEMPO_AJUSTADO BETWEEN CONVERT(DATETIME, ?) AND CONVERT(DATETIME, ?);"""
             
-            #Indicator_system:
-            if sistema=="MEDIDAS_ANALOGAS_HORIZONTALES":
-                indicator_sistema="ABB"
-            else:
-                indicator_sistema="SURVALENT"
+            # Execute the query:
+            cursor.execute(consulta_sql, (fecha_una_semana_atras_str, fecha_actual_str))
+
+            # Get the query results:
+            resultados =np.array(cursor.fetchall())
+            nombres_columnas = np.array([columna[0] for columna in cursor.description]) #Name of the columns of the query
+            # Create the dataframe with the query:
+            DF_BARRAS_ABB = pd.DataFrame(resultados, columns=nombres_columnas)
+            cursor.close() #Close the cursor
+            conexion.close() #Clos the query              
+                
+        except pyodbc.Error as e:
+            print("Error al conectar a la base de datos:", e)
             
-            # All the circuits that there is in database (Cabecera y Red):
+        #Filter the circuits codes by your nomenclature:
+        DF_BARRAS_ABB=DF_BARRAS_ABB['primeros_cinco_caracteres'].values
+        DF_FILTRADO_ABB = [elemento for elemento in DF_BARRAS_ABB if cumple_condicion(elemento)]
+            
+        
+        initialCounts(DF_FILTRADO_ABB); ## Start all the counters for the analysis
+        for i in range(0,len(DF_FILTRADO_ABB)): #For every cabecera or circuito_red
             try:
-                #Connection:
+                barra=[DF_FILTRADO_ABB[i]]
+                # Conexion to database:
                 conexion = pyodbc.connect(conexion_str)
-            
-                # Create cursor to execute queries:
+                #Create cursor to execute queries:
                 cursor = conexion.cursor()
                 
-                consulta_sql = f"""
-                SELECT DISTINCT LEFT(CIRCUITO, 5) AS primeros_cinco_caracteres
-                FROM DM_OPERACION.dbo.{sistema}
-                WHERE TIEMPO_AJUSTADO BETWEEN CONVERT(DATETIME, ?) AND CONVERT(DATETIME, ?);"""
-                
-                # Execute the query:
-                cursor.execute(consulta_sql, (fecha_una_semana_atras_str, fecha_actual_str))
-
-                # Get the query results:
-                resultados =np.array(cursor.fetchall())
-                nombres_columnas = np.array([columna[0] for columna in cursor.description]) #Name of the columns of the query
-                # Create the dataframe with the query:
-                DF_BARRAS_ABB = pd.DataFrame(resultados, columns=nombres_columnas)
-                cursor.close() #Close the cursor
-                conexion.close() #Clos the query 
-                           
-                    
-            except pyodbc.Error as e:
-                print("Error al conectar a la base de datos:", e)
-                
-            #Filter the circuits codes by your nomenclature:
-            DF_BARRAS_ABB=DF_BARRAS_ABB['primeros_cinco_caracteres'].values
-            DF_FILTRADO_ABB = [elemento for elemento in DF_BARRAS_ABB if cumple_condicion(elemento)]
-            DF_FILTRADO_ABB = DF_FILTRADO_ABB[:3]
             
-            initialCounts(DF_FILTRADO_ABB); ## Start all the counters for the analysis
-            for i in range(0,len(DF_FILTRADO_ABB)): #For every cabecera or circuito_red
-                try:
-                    
-                    barra=[DF_FILTRADO_ABB[i]]
-                    # Conexion to database:
-                    conexion = pyodbc.connect(conexion_str)
-                    #Create cursor to execute queries:
-                    cursor = conexion.cursor()
-                    
+                # Query:
+                consulta_sql = f"""
+                SELECT [CIRCUITO], [TIEMPO_AJUSTADO], [IA], [IB], [IC], [VA], [VB], [VC], [P], [Q]
+                FROM (
+                    SELECT
+                        [CIRCUITO],
+                        [TIEMPO_AJUSTADO],
+                        [IA],
+                        [IB],
+                        [IC],
+                        [VA],
+                        [VB],
+                        [VC],
+                        [P],
+                        [Q],
+                        ROW_NUMBER() OVER (PARTITION BY [CIRCUITO] ORDER BY [TIEMPO_AJUSTADO] DESC) as row_num
+                    FROM [DM_OPERACION].[dbo].[{sistema}]
+                    WHERE CIRCUITO LIKE ? AND TIEMPO_AJUSTADO <= CONVERT(DATETIME, ?)
+                ) AS Subconsulta
+                WHERE row_num <= 672
+                ORDER BY [CIRCUITO], [TIEMPO_AJUSTADO] DESC;
+                """
+
+                cursor.execute(consulta_sql, ('%' + DF_FILTRADO_ABB[i] + '%', fecha_actual_str))
+                #Get the results of the query:
+                resultados = np.array(cursor.fetchall())
+                nombres_columnas = np.array([columna[0] for columna in cursor.description])
+                df_MAGNITUDES_ABB = pd.DataFrame(resultados, columns=nombres_columnas)
                 
-                    # Query:
-                    consulta_sql = f"""
-                    SELECT [CIRCUITO], [TIEMPO_AJUSTADO], [IA], [IB], [IC], [VA], [VB], [VC], [P], [Q]
-                    FROM (
-                        SELECT
-                            [CIRCUITO],
-                            [TIEMPO_AJUSTADO],
-                            [IA],
-                            [IB],
-                            [IC],
-                            [VA],
-                            [VB],
-                            [VC],
-                            [P],
-                            [Q],
-                            ROW_NUMBER() OVER (PARTITION BY [CIRCUITO] ORDER BY [TIEMPO_AJUSTADO] DESC) as row_num
-                        FROM [DM_OPERACION].[dbo].[{sistema}]
-                        WHERE CIRCUITO LIKE ? AND TIEMPO_AJUSTADO <= CONVERT(DATETIME, ?)
-                    ) AS Subconsulta
-                    WHERE row_num <= 672
-                    ORDER BY [CIRCUITO], [TIEMPO_AJUSTADO] DESC;
-                    """
-
-                    cursor.execute(consulta_sql, ('%' + DF_FILTRADO_ABB[i] + '%', fecha_actual_str))
-                    #Get the results of the query:
-                    resultados = np.array(cursor.fetchall())
-                    nombres_columnas = np.array([columna[0] for columna in cursor.description])
-                    df_MAGNITUDES_ABB = pd.DataFrame(resultados, columns=nombres_columnas)
+                
                     
-                    
-                        
-                    #Get the unique Dates.
-                    df_MAGNITUDES_ABB = convertToDate(df_MAGNITUDES_ABB)
-                    #Replace the voltage and current values by your absolute
-                    df_MAGNITUDES_ABB = Absolute(df_MAGNITUDES_ABB)
-                    df_MAGNITUDES_ABB = ReScale(df_MAGNITUDES_ABB)
-                    #Correct the power and voltaje values out of the normal range:
-                    uniqueDates = getUniqueTime(df_MAGNITUDES_ABB)
-                    
-                    
-                    
-                    # Umbarl by cabecera and iter per time instant:
-                    getUmbrals(df_MAGNITUDES_ABB)
-                    #print("LLLEGAMOS HASTA UNIQUE DATES")
-                    findLastRegister(df_MAGNITUDES_ABB)
-                    #print("LLLEGAMOS HASTA UNIQUE DATES")
-                    
-                    dataframe_post_algoritmo=iterateByUniqueDate(df_MAGNITUDES_ABB,uniqueDates)
-                    
-                    # Create the confiabily columns:
-                    columnas_a_evaluar = ['IA', 'IB', 'IC', 'VA', 'VB', 'VC', 'P', 'Q']
-                    for columna in columnas_a_evaluar:
-                        nombre_columna_confiabilidad = 'CONFIABILIDAD_' + columna
-                        dataframe_post_algoritmo[nombre_columna_confiabilidad] = np.where(dataframe_post_algoritmo[columna].notnull(), 1, np.nan)  # 1 if is not NULL, NULL if is NULL
-                    
-                    #WHAT SCADA System:
-                    dataframe_post_algoritmo["SCADA"]=indicator_sistema
-                    
-                    cursor.close() #Close the cursor
-                    conexion.close() #Clos the query   
-
-                    ##VAE_MODELS.model_iteration(dataframe_post_algoritmo)
+                #Get the unique Dates.
+                
+                df_MAGNITUDES_ABB = convertToDate(df_MAGNITUDES_ABB)
+                #Replace the voltage and current values by your absolute
+                df_MAGNITUDES_ABB = Absolute(df_MAGNITUDES_ABB)
+                df_MAGNITUDES_ABB = ReScale(df_MAGNITUDES_ABB)
+                #Correct the power and voltaje values out of the normal range:
+                uniqueDates = getUniqueTime(df_MAGNITUDES_ABB)
+                
+                
+                
+                # Umbarl by cabecera and iter per time instant:
+                getUmbrals(df_MAGNITUDES_ABB)
+                findLastRegister(df_MAGNITUDES_ABB)
+                
+                
+                
+                dataframe_post_algoritmo=iterateByUniqueDate(df_MAGNITUDES_ABB,uniqueDates)
+                
+                # Create the confiabily columns:
+                columnas_a_evaluar = ['IA', 'IB', 'IC', 'VA', 'VB', 'VC', 'P', 'Q']
+                for columna in columnas_a_evaluar:
+                    nombre_columna_confiabilidad = 'CONFIABILIDAD_' + columna
+                    dataframe_post_algoritmo[nombre_columna_confiabilidad] = np.where(dataframe_post_algoritmo[columna].notnull(), 1, np.nan)  # 1 if is not NULL, NULL if is NULL
+                
+                #WHAT SCADA System:
+                dataframe_post_algoritmo["SCADA"]=indicator_sistema
+                
+                
+                
+                cursor.close() #Close the cursor
+                conexion.close() #Close the query 
+                
+                VAE_MODELS.model_iteration(dataframe_post_algoritmo)
 
 
-                        
-                except Exception as e:
-                    print("Error al generar la consulta:", e)
+                    
+            except Exception as e:
+                print("Error al generar la consulta:", e)
+        
 
-            #Storage Reportings:
-            reporte.to_csv(f'Reporte_SCADA_{indicator_sistema}.csv',sep=";",index=False)
+    
+        
+
+
+
