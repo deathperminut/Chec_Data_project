@@ -1,4 +1,4 @@
-# Alrotimo de Imputación de Datos Sistemas SCADA:
+# Algoritmo de Imputación de Datos Sistemas SCADA:
 
 <figure  align="center">
 <img src='/assets/chec.png' width="800"> 
