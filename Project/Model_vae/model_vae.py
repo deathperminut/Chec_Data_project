@@ -1,41 +1,47 @@
 
 ###############################
 ##########LIBRERIAS############
+############data###############
 ###############################
 
-from sklearn.model_selection import train_test_split
 import pandas as pd
-import pyarrow.parquet as pq
-import os
 import numpy as np
 from scipy import stats
-import matplotlib.pyplot as plt
-###MODELO
+
+###############################
+########DATABASE###############
+###############################
+
+import json
+import pyodbc
+
+###############################
+########MODEL##################
+###############################
+
 from tensorflow.keras.models import Model
 from tensorflow.keras.layers import Dense, Activation, Dropout
 from tensorflow.keras.layers import Conv2D, AveragePooling2D,Conv2DTranspose
 from tensorflow.keras.layers import BatchNormalization
-from tensorflow.keras.layers import Input, Flatten, Reshape
+from tensorflow.keras.layers import Input
 from tensorflow.keras.constraints import max_norm
 from tensorflow.keras import backend as K
 from tensorflow.keras.layers.experimental.preprocessing import Resizing
-from tensorflow.keras.losses import CategoricalCrossentropy
 from tensorflow.keras.regularizers import l1_l2
 import tensorflow as tf
-import random
-from tensorflow.keras.losses import CategoricalCrossentropy
-import json
-import pyodbc
 
 
-
-
-#### MODEL CLASS CONTROL ######
+###############################
+########CLASSES################
+###############################
 
 class reparametrize(tf.keras.layers.Layer):
     """
-    FUNCIÓN PARA MUESTREAR EL ESPACIO LATENTE EN EL AUTOENCODER
-    VARIACIONAL Y DEFINIR LA FUNCIÓN DE COSTO CUSTOM
+    function to 
+    -----------------------------------------
+    tf.keras.layers.Layer => layout related with 
+    the latent space of the autoencoder this
+    help to generate de custom loss function
     """
     def call(self, inputs):
         mean, log_var = inputs
@@ -45,19 +51,33 @@ class reparametrize(tf.keras.layers.Layer):
 
 
 class VaeModel():
+      """
+        VaeModel
+        ------------------------------
 
+        function to control all the models for the 
+        imputation process of a specific dataset. 
+
+      """
       def __init__(self):
+         
 
-         self.generate_models()
-         self.init_server()
+         self.generate_models()### generate all the models 10,2,3,GOOD MODELS
+         self.init_server() ### function for specify the credentials of the server.
 
       def init_server(self):
+          """
+          function to specify all the credentials to connect to the database
+          ------------------------------------------------------------------
+
+          all the information of this is in the json file "Archivo_de_Credenciales"
+
+          """
           #Read the json file with the credentials for database:
           with open("Project/Model_vae/Archivo_de_Credenciales_escritura.json", 'r') as archivo:
             credenciales = json.load(archivo)
-          # Establecer la cadena de conexión para conectar a la base de datos
+          # Set the connection string to connect to the database
           self.server = "10.46.6.56\CHECSQLDES"
-          #database = 'DM_OPERACION'
           self.username = credenciales['username']
           self.password = credenciales['password']
           self.driver = '{ODBC Driver 17 for SQL Server}'
@@ -67,12 +87,13 @@ class VaeModel():
 
       def VAE_LATENT_DIM_(self,Chans, Samples, dropoutRate = 0.5, l1 = 0, l2 = 0,latent_dim = 160):
             """
-            FUNCIÓN PARA GENERAR EL MODELO VAE
+            FUNCTION TO GET THE ARQUITECTURE OF THE MODEL VAE
             -----------------------------------
-            Chans = Número de canales
-            Samples = Muestras por trial
-            dropoutRate = HiperParametro para definir el dropout de las capas
-            l1, l2  = Parametro de regularización
+            Chans = Number of signals
+            Samples = samples of  time serie
+            dropoutRate = hyperparam for training
+            l1, l2  = Regularization parameter
+            latent_dim = dimensions for latent space
             """
 
             filters      = (1,40) ##ESTRUCTURA BASE DEL MODELO MULTITASK
@@ -82,32 +103,32 @@ class VaeModel():
             ## ENCODER
             input_main   = Input((Chans, Samples, 1))
             block1       = Conv2D(latent_dim, filters, strides=(1,2),
-                                          input_shape=(Chans, Samples, 1),kernel_regularizer=l1_l2(l1=l1,l2=l2),
-                                          name='Conv2D_1',
-                                          kernel_constraint = max_norm(2., axis=(0,1,2)))(input_main)
+                                        input_shape=(Chans, Samples, 1),kernel_regularizer=l1_l2(l1=l1,l2=l2),
+                                        name='Conv2D_1',
+                                        kernel_constraint = max_norm(2., axis=(0,1,2)))(input_main)
             block1       = Conv2D(latent_dim, (Chans, 1), use_bias=bias_spatial, kernel_regularizer=l1_l2(l1=l1,l2=l2),
-                                  name='Conv2D_2',
-                                  kernel_constraint = max_norm(2., axis=(0,1,2)))(block1)
+                                name='Conv2D_2',
+                                kernel_constraint = max_norm(2., axis=(0,1,2)))(block1)
             block1       = BatchNormalization(epsilon=1e-05, momentum=0.1)(block1)
             Act1         = Activation('elu')(block1)
             block1       = AveragePooling2D(pool_size=pool, strides=strid)(Act1)
             block1       = Dropout(dropoutRate,name='bottleneck')(block1) ## ENCODER
-            ### MODELO PROBABILISTICO
+            ### 
             mu           = Dense(latent_dim,name='mu')(block1) ##
             log_var      = Dense(latent_dim,name='log_var')(block1)
             codings      = reparametrize(name='Code')([mu, log_var]) ## CODIFICAMOS CON LA MEDIA Y VARIANZA DADA
 
 
 
-            ##CAPA DE DECODIFICACIÓN
+            ##DECODER
             block2       = Conv2DTranspose(latent_dim, pool,strides=strid,activation='tanh', kernel_regularizer=l1_l2(l1=l1,l2=l2),
-                                  kernel_constraint = max_norm(2., axis=(0,1,2)))(codings)
+                                    kernel_constraint = max_norm(2., axis=(0,1,2)))(codings)
             block2       = Resizing(block2.shape[1], Act1.shape[2])(block2)
             block2       = Conv2DTranspose(latent_dim, (Chans, 1), use_bias=bias_spatial, kernel_regularizer=l1_l2(l1=l1,l2=l2),
-                                  kernel_constraint = max_norm(2., axis=(0,1,2)))(block2)
+                                    kernel_constraint = max_norm(2., axis=(0,1,2)))(block2)
             block2       = Conv2DTranspose(1, filters,strides=(1,2),
-                                          input_shape=(Chans, Samples, 1),kernel_regularizer=l1_l2(l1=l1,l2=l2),
-                                          kernel_constraint = max_norm(2., axis=(0,1,2)))(block2)
+                                    input_shape=(Chans, Samples, 1),kernel_regularizer=l1_l2(l1=l1,l2=l2),
+                                    kernel_constraint = max_norm(2., axis=(0,1,2)))(block2)
 
             model = Model(inputs=input_main, outputs=[block2])
 
@@ -116,37 +137,47 @@ class VaeModel():
 
       def vae_loss(self,mu, log_var):
             """
-            función para definir la función del perdida del modelo VAE
+            function to define the loss function of the VAE model,
+            based on the kl divergence and mse
             """
             kl_loss = -0.5 * tf.reduce_mean(1 + log_var - tf.square(mu) - tf.exp(log_var))
-
-            # Definir
-
-            # Suma de ambas pérdidas
             total_loss = kl_loss
 
             return total_loss
 
       def generate_models(self):
             """
-            función para definir cada uno de los modelos cargados
-            con los pesos guardados
+            function to define each of the loaded models
+            with saved weights
+            -----------------------------------------
+
+            parameters
+            ------------------------
+            None
+
+            Return
+            ........................
+
+            None
             """
             #######################################
             ################ 10 ###################
             #######################################
 
-            Channels = 6
+            ##### WE DEFINE THE AMOUNT OF SIGNALS
+            Channels = 6 
+            #### TIME SERIES SAMPLES PER WEEK
             Samples = 672
-            self.MODEL_10 = self.VAE_LATENT_DIM_(Chans=Channels,Samples = Samples,latent_dim = 260) ## OBTENEMOS EL MODELO
-            # OBTENEMOS LAS ENTRADAS Y SALIDAS DEL MODELO
-            inputs = self.MODEL_10.input ##ENTRADA
-            outputs = self.MODEL_10.output ##SALIDAS [reconstrucción,clasificación]
-            # Obtener las capas de salida del espacio latente (mu y log_var)
+            ####we build the model with the required latent space dimensions
+            self.MODEL_10 = self.VAE_LATENT_DIM_(Chans=Channels,Samples = Samples,latent_dim = 260) 
+            # WE OBTAIN THE INPUTS AND OUTPUTS OF THE MODEL
+            inputs = self.MODEL_10.input
+            outputs = self.MODEL_10.output
+            # Get the output layers of the latent space (mu and log_var)
             mu_layer = self.MODEL_10.get_layer('mu')
             log_var_layer = self.MODEL_10.get_layer('log_var')
 
-            # Obtener las salidas de las capas de mu y log_var
+            # Obtener las salidas de las capas de mu y log_var para reparametrizar
             mu_output = mu_layer.output
             log_var_output = log_var_layer.output
 
@@ -161,7 +192,7 @@ class VaeModel():
             #######################################
             ###############  2  ###################
             #######################################
-
+            ####we build the model with the required latent space dimensions
             self.MODEL_2 = self.VAE_LATENT_DIM_(Chans=Channels,Samples = Samples,latent_dim = 340) ## OBTENEMOS EL MODELO
             # OBTENEMOS LAS ENTRADAS Y SALIDAS DEL MODELO
             inputs = self.MODEL_2.input ##ENTRADA
@@ -263,7 +294,17 @@ class VaeModel():
       def model_iteration(self,df_circuits):
 
             """
-            función para iterar por cada serie de tiempo de cada circuito
+            
+            function to iterate through each time series of each circuit
+            -------------------------------------------------------------
+            parameters
+            .................................
+            df_circuits (pandas dataframe)=> dataframe with the information of time serie
+    
+            return
+            ------------------------------
+            None
+
             """
             #### obtenemos los circuitos unicos del dataframe
             circuits = df_circuits['CIRCUITO'].unique()
@@ -281,6 +322,27 @@ class VaeModel():
 
 
       def iterar_por_grupos(self,dataframe, tamano_grupo):
+            
+            """
+            
+            function to iterate through each time series of each circuit
+            with a longitud of 672 samples
+            -------------------------------------------------------------
+            parameters
+            .................................
+            dataframe (pandas dataframe)=> dataframe with the information of one time serie of 672 samples
+                                           that is the samples of a week.
+
+            tamano_grupo (int) => longitude of dataframe standar 672 samples
+                                           
+            
+
+            return
+            ------------------------------
+
+            None
+
+            """
             # Obtener la cantidad total de filas en el DataFrame
             total_filas = len(dataframe)
 
@@ -315,6 +377,23 @@ class VaeModel():
                     self.insertDataBase(grupo_imputado)
 
       def completeGroup(self,df,objetivo_filas):
+          """
+          function to complete the dimensions required to be introduced to the vae model
+          ------------------------------------------------------------------------------------
+
+
+          Parameters
+          ----------
+          df (pandas dataframe) :
+              incomplete dataframe to modify
+          objetivo_filas (int): 
+              number of necessary rows needed in the dataframe
+
+          Returns
+          -------
+          df_completo (pandas dataframe) :
+             complete dataframe with the neccesary rows
+          """
           # Calcular cuántas veces necesitas repetir el DataFrame
           repeticiones = -(-objetivo_filas // len(df))  # Equivalente a math.ceil(objetivo_filas / len(df))
           # Repetir el DataFrame
@@ -325,7 +404,21 @@ class VaeModel():
 
 
       def insertDataBase(self,df):
-          # Realizar una consulta SQL desde Python utilizando pyodbc
+            
+            """
+            function to insert the dataframe into the specific database
+            ------------------------------------------------------------------------------------
+
+
+            Parameters
+            ----------
+            df (pandas dataframe) :
+                complete dataframe after model
+
+            Returns
+            -------
+            None
+            """
             try:
                  conexion = pyodbc.connect(self.conexion_str)
 
@@ -355,7 +448,15 @@ class VaeModel():
                 """
                 process data from a selected dataframe of a specific circuit
                 ----------------------------------------------------------------
-                df => dataframe
+                params
+                ----------------------------------
+                df => dataframe : that represent a seccion of time with 672 samples
+               
+                return
+                ---------------------------------
+
+                df => (pandas dataframe) : dataframe complete after the model VAE.
+
                 """
                 ##########################################
                 ####### NORMALIZAMOS LOS DATOS ###########
@@ -540,7 +641,21 @@ class VaeModel():
 
 
       def calc_r2(self,cantidad_perdidos,modelo,variable):
+            """
+            function that calculated the fiability of the model of each time serie
+            ----------------------------------------------------------------
+            params
+            ----------------------------------
+            cantidad_perdidos => int : quantity of loss values.
+            modelo =>  string : type of model.
+            variable => int  : represent the time serie that we are focus.
             
+            return
+            ---------------------------------
+
+            r2 => (float) : r2 for model.
+
+            """
             dictionario = {
                 '10':{
                     '0':{
@@ -665,7 +780,20 @@ class VaeModel():
       
 
       def findLastRegister(self,registros_asociados):
+            """
+            function that find the last register of a specific circuit in the dataframe
+            to find the sign of P and Q
+            ----------------------------------------------------------------
+            params
+            ----------------------------------
+            registros_asociados => (pandas dataframe)
+            
+            return
+            ---------------------------------
 
+            list => (list) with 2 values that represent the sign of P and Q
+
+            """
             ###NO SE TENDRIA CERTEZA DEL FLUJO CON P=0 o Q=0
             registros_filtrados = registros_asociados[(registros_asociados['P'].notna()) & (registros_asociados['P'] != 0) & (registros_asociados['Q'].notna()) & (registros_asociados['Q'] != 0)]
             registros_ordenados = registros_filtrados.sort_values(by=['TIEMPO_AJUSTADO'], ascending=False)
@@ -740,8 +868,6 @@ class VaeModel():
 
 
 if __name__ == "__main__":
-    
-    #dataframe = pd.read_csv('probe (1).csv',sep=';')
-    #### CARGAMOS LOS MODELOS
+
     VAE_MODELS  = VaeModel()
     #VAE_MODELS.model_iteration(dataframe)
